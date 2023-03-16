@@ -1,21 +1,25 @@
+#[derive(Debug)]
 pub struct RFormat {
-    rs: u8,
-    rt: u8,
-    rd: u8,
-    shamt: u8,
-    funct: u8,
+    pub rs: u8,
+    pub rt: u8,
+    pub rd: u8,
+    pub shamt: u8,
+    pub funct: u8,
 }
 
+#[derive(Debug)]
 pub struct IFormat {
-    rs: u8,
-    rt: u8,
-    imm: u16,
+    pub rs: u8,
+    pub rt: u8,
+    pub imm: u16,
 }
 
+#[derive(Debug)]
 pub struct JFormat {
-    address: u32,
+    pub address: u32,
 }
 
+#[derive(Debug)]
 pub enum InstructionArgs {
     RFormat(RFormat),
     IFormat(IFormat),
@@ -29,9 +33,10 @@ pub enum InstructionFormat {
     J,
 }
 
-pub struct InstructionData {
-    opcode: u8,
-    args: InstructionArgs,
+#[derive(Debug)]
+pub struct InstructionData<'a> {
+    pub base: &'a Instruction<'a>,
+    pub args: InstructionArgs,
 }
 
 #[derive(Debug)]
@@ -44,7 +49,7 @@ pub struct Instruction<'a> {
 }
 
 /// Supported MIPS instructions.
-pub mod Instructions {
+pub mod instructions {
     use super::*;
 
     pub const ADD: Instruction = Instruction {

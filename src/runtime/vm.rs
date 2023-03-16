@@ -120,38 +120,6 @@ impl VM {
         self.registers[register as usize]
     }
 
-    pub fn get_gp(&self) -> u32 {
-        self.get_register(28)
-    }
-
-    pub fn set_gp(&mut self, value: u32) {
-        self.set_register(28, value);
-    }
-
-    pub fn get_sp(&self) -> u32 {
-        self.get_register(29)
-    }
-
-    pub fn set_sp(&mut self, value: u32) {
-        self.set_register(29, value);
-    }
-
-    pub fn get_fp(&self) -> u32 {
-        self.get_register(30)
-    }
-
-    pub fn set_fp(&mut self, value: u32) {
-        self.set_register(30, value);
-    }
-
-    pub fn get_ra(&self) -> u32 {
-        self.get_register(31)
-    }
-
-    pub fn set_ra(&mut self, value: u32) {
-        self.set_register(31, value);
-    }
-
     pub fn get_pc(&self) -> usize {
         self.pc
     }

@@ -60,6 +60,14 @@ impl MemorySegment {
         }
     }
 
+    pub fn allow_writes(&mut self) {
+        self.read_only = false;
+    }
+
+    pub fn set_read_only(&mut self) {
+        self.read_only = true;
+    }
+
     /// Return the offset of the given address within this segment.
     /// If the address is out of bounds, panic.
     fn get_offset(&self, address: usize) -> usize {
@@ -262,10 +270,17 @@ impl MemoryMap {
         None
     }
 
-    fn invalid_address(&self, address: usize) -> ! {
+    fn invalid_read(&self, address: usize) -> ! {
         fatal_error(
             FatalErrorType::IllegalMemoryAccess,
-            format!("Invalid memory address {:#010x}", address),
+            format!("Invalid read at {:#010x}", address),
+        );
+    }
+
+    fn invalid_write(&self, address: usize) -> ! {
+        fatal_error(
+            FatalErrorType::IllegalMemoryAccess,
+            format!("Invalid write at {:#010x}", address),
         );
     }
 
@@ -273,7 +288,7 @@ impl MemoryMap {
         if let Some(segment) = self.get_segment(address) {
             segment.get_byte(address)
         } else {
-            self.invalid_address(address);
+            self.invalid_read(address);
         }
     }
 
@@ -281,7 +296,7 @@ impl MemoryMap {
         if let Some(segment) = self.get_segment(address) {
             segment.get_halfword(address)
         } else {
-            self.invalid_address(address);
+            self.invalid_read(address);
         }
     }
 
@@ -289,13 +304,15 @@ impl MemoryMap {
         if let Some(segment) = self.get_segment(address) {
             segment.get_word(address)
         } else {
-            self.invalid_address(address);
+            self.invalid_read(address);
         }
     }
 
     pub fn set_byte(&mut self, address: usize, value: u8) {
         if let Some(segment) = self.get_segment_mut(address) {
             segment.set_byte(address, value);
+        } else {
+            self.invalid_write(address);
         }
     }
 
@@ -303,7 +320,7 @@ impl MemoryMap {
         if let Some(segment) = self.get_segment_mut(address) {
             segment.set_halfword(address, value);
         } else {
-            self.invalid_address(address);
+            self.invalid_write(address);
         }
     }
 
@@ -311,7 +328,7 @@ impl MemoryMap {
         if let Some(segment) = self.get_segment_mut(address) {
             segment.set_word(address, value);
         } else {
-            self.invalid_address(address);
+            self.invalid_write(address);
         }
     }
 
@@ -327,5 +344,39 @@ impl MemoryMap {
         }
 
         None
+    }
+
+    pub fn mut_segment_by_name(&mut self, name: &str) -> Option<&mut MemorySegment> {
+        for segment in &mut self.segments {
+            if segment.name == name {
+                return Some(segment);
+            }
+        }
+
+        None
+    }
+
+    /// Return the first address that is aligned to the given alignment, starting from `address`,
+    /// and moving in the given direction.
+    pub fn align_address(
+        &self,
+        address: usize,
+        alignment: u8,
+        direction: SegmentDirection,
+    ) -> usize {
+        let mut address = address;
+
+        while address % alignment as usize != 0 {
+            match direction {
+                SegmentDirection::Up => {
+                    address += 1;
+                }
+                SegmentDirection::Down => {
+                    address -= 1;
+                }
+            }
+        }
+
+        address
     }
 }
