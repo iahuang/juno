@@ -34,7 +34,15 @@ enum ExecutionTask {
 enum Target {
     Register(u8),
     Memory(u32),
-    Immediate(u32),
+    Immediate(u16, HalfWordExtension),
+}
+
+/// Represents whether an immediate value should be sign-extended or zero-extended
+/// when used as a 32-bit value.
+#[derive(Debug)]
+enum HalfWordExtension {
+    Sign,
+    Zero,
 }
 
 impl VM {
@@ -126,7 +134,7 @@ impl VM {
                 Some(ExecutionTask::Add {
                     dest: Target::Register(args.rt),
                     a: Target::Register(args.rs),
-                    b: Target::Immediate(args.imm as u32),
+                    b: Target::Immediate(args.imm, HalfWordExtension::Sign),
                     overflow: true,
                 })
             }
@@ -136,7 +144,7 @@ impl VM {
                 Some(ExecutionTask::Add {
                     dest: Target::Register(args.rt),
                     a: Target::Register(args.rs),
-                    b: Target::Immediate(args.imm as u32),
+                    b: Target::Immediate(args.imm, HalfWordExtension::Sign),
                     overflow: false,
                 })
             }
@@ -149,7 +157,10 @@ impl VM {
         match target {
             Target::Register(reg) => self.get_register(*reg),
             Target::Memory(address) => self.memory.get_word(*address as usize),
-            Target::Immediate(value) => *value,
+            Target::Immediate(value, hw_ext) => match hw_ext {
+                HalfWordExtension::Sign => (*value as i16) as u32,
+                HalfWordExtension::Zero => *value as u32,
+            }
         }
     }
 
@@ -160,7 +171,7 @@ impl VM {
         match target {
             Target::Register(reg) => self.set_register(reg, value),
             Target::Memory(address) => self.memory.set_word(address as usize, value),
-            Target::Immediate(_) => panic!("Cannot set value of immediate target"),
+            Target::Immediate(_, _) => panic!("Cannot set value of immediate target"),
         }
     }
 
