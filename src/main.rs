@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 mod runtime;
-
+mod mips;
 use crate::runtime::vm;
 
 fn main() {
@@ -19,4 +19,6 @@ fn main() {
     for addr in stack.get_high_address() - 3..stack.get_high_address()+1 {
         println!("{:#010x}: {}", addr, vm.memory.get_byte(addr));
     }
+
+    println!("{:?}", vm.decode_instruction(0x8fa20000));
 }
