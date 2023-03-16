@@ -139,7 +139,19 @@ impl MemorySegment {
     }
 
     /// Set the halfword at the given address to the given value.
+    ///
+    /// If the address is not aligned to a halfword boundary, throw a fatal error.
     pub fn set_halfword(&mut self, address: usize, value: u16) {
+        if address % 2 != 0 {
+            fatal_error(
+                FatalErrorType::IllegalMemoryAccess,
+                format!(
+                    "Attempted to write halfword to unaligned address {:#010x}",
+                    address
+                ),
+            );
+        }
+
         let hi = (value >> 8) as u8;
         let lo = value as u8;
 
@@ -148,7 +160,19 @@ impl MemorySegment {
     }
 
     /// Set the word at the given address to the given value.
+    ///
+    /// If the address is not aligned to a word boundary, throw a fatal error.
     pub fn set_word(&mut self, address: usize, value: u32) {
+        if address % 4 != 0 {
+            fatal_error(
+                FatalErrorType::IllegalMemoryAccess,
+                format!(
+                    "Attempted to write word to unaligned address {:#010x}",
+                    address
+                ),
+            );
+        }
+
         let b1 = (value >> 24) as u8;
         let b2 = (value >> 16) as u8;
         let b3 = (value >> 8) as u8;
@@ -159,7 +183,6 @@ impl MemorySegment {
         self.set_byte(address + 2, b3);
         self.set_byte(address + 3, b4);
     }
-
 
     pub fn get_start_address(&self) -> usize {
         self.start_address
