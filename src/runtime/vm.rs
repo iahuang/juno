@@ -2,6 +2,8 @@ use crate::runtime::memory::MemoryMap;
 use crate::runtime::memory::MemorySegment;
 use crate::runtime::memory::SegmentDirection;
 
+use super::errors::{RuntimeError, FatalErrorType};
+
 pub struct MemoryLayout {
     pub text_low: usize,
     pub data_low: usize,
@@ -35,6 +37,9 @@ pub struct VM {
 
     /// The program counter.
     pc: usize,
+
+    hi: u32,
+    lo: u32,
 }
 
 impl VM {
@@ -85,39 +90,51 @@ impl VM {
             SegmentDirection::Down,
             false,
         ));
-        
 
         VM {
             registers: [0; 32],
             memory,
             pc: layout.text_low,
+            hi: 0,
+            lo: 0,
         }
     }
 
     /// Set the given register to the given value.
     ///
     /// Throw an error if the register number is invalid, or if attempting to set the zero register.
-    pub fn set_register(&mut self, register: u8, value: u32) {
+    pub fn set_register(&mut self, register: u8, value: u32) -> Result<(), RuntimeError> {
         if register == 0 {
-            panic!("Attempted to set the zero register");
+            return Err(RuntimeError::new(
+                FatalErrorType::IllegalRegisterAccess,
+                String::from("Attempted to set the zero register"),
+            ));
         }
 
         if register > 31 {
-            panic!("Invalid register number");
+            return Err(RuntimeError::new(
+                FatalErrorType::IllegalRegisterAccess,
+                format!("Invalid register number {}", register),
+            ));
         }
 
         self.registers[register as usize] = value;
+
+        Ok(())
     }
 
     /// Get the value of the given register.
     ///
     /// Throw an error if the register number is invalid.
-    pub fn get_register(&self, register: u8) -> u32 {
+    pub fn get_register(&self, register: u8) -> Result<u32, RuntimeError> {
         if register > 31 {
-            panic!("Invalid register number");
+            Err(RuntimeError::new(
+                FatalErrorType::IllegalRegisterAccess,
+                format!("Invalid register number {}", register),
+            ))
+        } else {
+            Ok(self.registers[register as usize])
         }
-
-        self.registers[register as usize]
     }
 
     pub fn get_pc(&self) -> usize {
@@ -126,5 +143,21 @@ impl VM {
 
     pub fn set_pc(&mut self, value: usize) {
         self.pc = value;
+    }
+
+    pub fn get_hi(&self) -> u32 {
+        self.hi
+    }
+
+    pub fn set_hi(&mut self, value: u32) {
+        self.hi = value;
+    }
+
+    pub fn get_lo(&self) -> u32 {
+        self.lo
+    }
+
+    pub fn set_lo(&mut self, value: u32) {
+        self.lo = value;
     }
 }

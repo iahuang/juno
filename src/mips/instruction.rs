@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct RFormat {
     pub rs: u8,
     pub rt: u8,
@@ -7,36 +7,76 @@ pub struct RFormat {
     pub funct: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct IFormat {
     pub rs: u8,
     pub rt: u8,
     pub imm: u16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct JFormat {
     pub address: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum InstructionArgs {
     RFormat(RFormat),
     IFormat(IFormat),
     JFormat(JFormat),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum InstructionFormat {
     R,
     I,
     J,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct InstructionData<'a> {
     pub base: &'a Instruction<'a>,
     pub args: InstructionArgs,
+}
+
+/// Coerces R-format arguments from an instruction. Panics if the instruction is not R-format.
+pub fn coerece_r_format<'a>(instruction: &'a InstructionData) -> &'a RFormat {
+    match &instruction.args {
+        InstructionArgs::RFormat(args) => args,
+        _ => panic!("Given instruction is not R-format"),
+    }
+}
+
+/// Coerces I-format arguments from an instruction. Panics if the instruction is not I-format.
+pub fn coerce_i_format<'a>(instruction: &'a InstructionData) -> &'a IFormat {
+    match &instruction.args {
+        InstructionArgs::IFormat(args) => args,
+        _ => panic!("Given instruction is not I-format"),
+    }
+}
+
+/// Coerces J-format arguments from an instruction. Panics if the instruction is not J-format.
+pub fn coerce_j_format<'a>(instruction: &'a InstructionData) -> &'a JFormat {
+    match &instruction.args {
+        InstructionArgs::JFormat(args) => args,
+        _ => panic!("Given instruction is not J-format"),
+    }
+}
+
+impl<'a> InstructionData<'a> {
+    /// Returns true if the instruction is a sll instruction with all zero arguments.
+    pub fn is_null(&self) -> bool {
+        match self.args {
+            InstructionArgs::RFormat(r_args) => {
+                if self.base.opc_func == 0 {
+                    r_args.rs == 0 && r_args.rt == 0 && r_args.rd == 0 && r_args.shamt == 0
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -33,34 +33,34 @@ const REG_RA: u8 = 31;
 
 impl VM {
     pub fn get_gp(&self) -> u32 {
-        self.get_register(28)
+        self.get_register(28).unwrap()
     }
 
     pub fn set_gp(&mut self, value: u32) {
-        self.set_register(28, value);
+        self.set_register(28, value).unwrap();
     }
 
     pub fn get_sp(&self) -> u32 {
-        self.get_register(29)
+        self.get_register(29).unwrap()
     }
 
     pub fn set_sp(&mut self, value: u32) {
-        self.set_register(29, value);
+        self.set_register(29, value).unwrap();
     }
 
     pub fn get_fp(&self) -> u32 {
-        self.get_register(30)
+        self.get_register(30).unwrap()
     }
 
     pub fn set_fp(&mut self, value: u32) {
-        self.set_register(30, value);
+        self.set_register(30, value).unwrap();
     }
 
     pub fn get_ra(&self) -> u32 {
-        self.get_register(31)
+        self.get_register(31).unwrap()
     }
 
     pub fn set_ra(&mut self, value: u32) {
-        self.set_register(31, value);
+        self.set_register(31, value).unwrap();
     }
 }

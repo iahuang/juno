@@ -1,23 +1,27 @@
 use colored::*;
+use crate::runtime::errors::{RuntimeError, FatalErrorType, Trap};
 
-pub enum FatalErrorType {
-    IllegalMemoryAccess,
-    IllegalInstruction,
-    IllegalRegister,
+pub struct Logger {
+    
 }
 
-/// Log a fatal error and exit the program.
-pub fn fatal_error(err_type: FatalErrorType, message: String) -> ! {
-    eprintln!(
-        "{} {}: {}",
-        "[runtime error]".red().bold(),
-        match err_type {
-            FatalErrorType::IllegalMemoryAccess => "ILLEGAL_MEMORY_ACCESS",
-            FatalErrorType::IllegalInstruction => "ILLEGAL_INSTRUCTION",
-            FatalErrorType::IllegalRegister => "ILLEGAL_REGISTER",
-        },
-        message
-    );
+impl Logger {
+    /// Log a fatal error.
+    pub fn fatal_error(&self, err: &RuntimeError) {
+        eprintln!(
+            "{} {}: {}",
+            "[runtime error]".red().bold(),
+            match err.err_type {
+                FatalErrorType::IllegalMemoryAccess => "ILLEGAL_MEMORY_ACCESS",
+                FatalErrorType::IllegalInstruction => "ILLEGAL_INSTRUCTION",
+                FatalErrorType::IllegalRegisterAccess => "ILLEGAL_REGISTER",
+            },
+            err.message
+        );
+    }
 
-    std::process::exit(1);
+    /// Log a trap error.
+    pub fn trap_error(&self, trap: &Trap) {
+        eprintln!("{} {}", "[trap]".red().bold(), trap.message);
+    }
 }

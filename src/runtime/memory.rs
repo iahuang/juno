@@ -1,5 +1,4 @@
-use crate::runtime::logging::fatal_error;
-use crate::runtime::logging::FatalErrorType;
+use crate::runtime::errors::{FatalErrorType, RuntimeError};
 
 pub enum SegmentDirection {
     Up,
@@ -70,9 +69,9 @@ impl MemorySegment {
 
     /// Return the offset of the given address within this segment.
     /// If the address is out of bounds, panic.
-    fn get_offset(&self, address: usize) -> usize {
+    fn get_offset(&self, address: usize) -> Result<usize, RuntimeError> {
         if address < self.get_low_address() || address > self.get_high_address() {
-            fatal_error(
+            Err(RuntimeError::new(
                 FatalErrorType::IllegalMemoryAccess,
                 format!(
                     "Address 0x{:x} out of bounds for segment \"{}\" from {:#010x} to {:#010x}",
@@ -81,53 +80,53 @@ impl MemorySegment {
                     self.get_low_address(),
                     self.get_high_address()
                 ),
-            );
+            ))
+        } else {
+            Ok(address - self.get_low_address())
         }
-
-        address - self.get_low_address()
     }
 
-    pub fn get_byte(&self, address: usize) -> u8 {
-        let offset = self.get_offset(address);
+    pub fn get_byte(&self, address: usize) -> Result<u8, RuntimeError> {
+        let offset = self.get_offset(address)?;
 
         // check if the offset is in the data vector
         if offset >= self.data.len() {
             // if not, return 0
-            0
+            Ok(0)
         } else {
             // if so, return the byte at that offset
-            self.data[offset]
+            Ok(self.data[offset])
         }
     }
 
-    pub fn get_halfword(&self, address: usize) -> u16 {
-        let hi = self.get_byte(address) as u16;
-        let lo = self.get_byte(address + 1) as u16;
+    pub fn get_halfword(&self, address: usize) -> Result<u16, RuntimeError> {
+        let hi = self.get_byte(address)? as u16;
+        let lo = self.get_byte(address + 1)? as u16;
 
-        (hi << 8) | lo
+        Ok((hi << 8) | lo)
     }
 
-    pub fn get_word(&self, address: usize) -> u32 {
-        let b1 = self.get_byte(address) as u32;
-        let b2 = self.get_byte(address + 1) as u32;
-        let b3 = self.get_byte(address + 2) as u32;
-        let b4 = self.get_byte(address + 3) as u32;
+    pub fn get_word(&self, address: usize) -> Result<u32, RuntimeError> {
+        let b1 = self.get_byte(address)? as u32;
+        let b2 = self.get_byte(address + 1)? as u32;
+        let b3 = self.get_byte(address + 2)? as u32;
+        let b4 = self.get_byte(address + 3)? as u32;
 
-        (b1 << 24) | (b2 << 16) | (b3 << 8) | b4
+        Ok((b1 << 24) | (b2 << 16) | (b3 << 8) | b4)
     }
 
     /// Set the byte at the given address to the given value.
-    pub fn set_byte(&mut self, address: usize, value: u8) {
-        let offset = self.get_offset(address);
+    pub fn set_byte(&mut self, address: usize, value: u8) -> Result<(), RuntimeError> {
+        let offset = self.get_offset(address)?;
 
         if self.read_only {
-            fatal_error(
+            return Err(RuntimeError::new(
                 FatalErrorType::IllegalMemoryAccess,
                 format!(
                     "Attempted to write to read-only segment \"{}\" at address {:#010x}",
                     self.name, address
                 ),
-            );
+            ));
         }
 
         // check if the offset is in the data vector
@@ -144,52 +143,58 @@ impl MemorySegment {
 
         // set the byte at the offset
         self.data[offset] = value;
+
+        Ok(())
     }
 
     /// Set the halfword at the given address to the given value.
     ///
-    /// If the address is not aligned to a halfword boundary, throw a fatal error.
-    pub fn set_halfword(&mut self, address: usize, value: u16) {
+    /// If the address is not aligned to a halfword boundary, return an error.
+    pub fn set_halfword(&mut self, address: usize, value: u16) -> Result<(), RuntimeError> {
         if address % 2 != 0 {
-            fatal_error(
+            Err(RuntimeError::new(
                 FatalErrorType::IllegalMemoryAccess,
                 format!(
                     "Attempted to write halfword to unaligned address {:#010x}",
                     address
                 ),
-            );
+            ))
+        } else {
+            let hi = (value >> 8) as u8;
+            let lo = value as u8;
+
+            self.set_byte(address, hi)?;
+            self.set_byte(address + 1, lo)?;
+
+            Ok(())
         }
-
-        let hi = (value >> 8) as u8;
-        let lo = value as u8;
-
-        self.set_byte(address, hi);
-        self.set_byte(address + 1, lo);
     }
 
     /// Set the word at the given address to the given value.
     ///
     /// If the address is not aligned to a word boundary, throw a fatal error.
-    pub fn set_word(&mut self, address: usize, value: u32) {
+    pub fn set_word(&mut self, address: usize, value: u32) -> Result<(), RuntimeError> {
         if address % 4 != 0 {
-            fatal_error(
+            Err(RuntimeError::new(
                 FatalErrorType::IllegalMemoryAccess,
                 format!(
                     "Attempted to write word to unaligned address {:#010x}",
                     address
                 ),
-            );
+            ))
+        } else {
+            let b1 = (value >> 24) as u8;
+            let b2 = (value >> 16) as u8;
+            let b3 = (value >> 8) as u8;
+            let b4 = value as u8;
+
+            self.set_byte(address, b1)?;
+            self.set_byte(address + 1, b2)?;
+            self.set_byte(address + 2, b3)?;
+            self.set_byte(address + 3, b4)?;
+
+            Ok(())
         }
-
-        let b1 = (value >> 24) as u8;
-        let b2 = (value >> 16) as u8;
-        let b3 = (value >> 8) as u8;
-        let b4 = value as u8;
-
-        self.set_byte(address, b1);
-        self.set_byte(address + 1, b2);
-        self.set_byte(address + 2, b3);
-        self.set_byte(address + 3, b4);
     }
 
     pub fn get_start_address(&self) -> usize {
@@ -270,65 +275,51 @@ impl MemoryMap {
         None
     }
 
-    fn invalid_read(&self, address: usize) -> ! {
-        fatal_error(
-            FatalErrorType::IllegalMemoryAccess,
-            format!("Invalid read at {:#010x}", address),
-        );
-    }
-
-    fn invalid_write(&self, address: usize) -> ! {
-        fatal_error(
-            FatalErrorType::IllegalMemoryAccess,
-            format!("Invalid write at {:#010x}", address),
-        );
-    }
-
-    pub fn get_byte(&self, address: usize) -> u8 {
+    pub fn get_byte(&self, address: usize) -> Result<u8, RuntimeError> {
         if let Some(segment) = self.get_segment(address) {
             segment.get_byte(address)
         } else {
-            self.invalid_read(address);
+            Err(RuntimeError::err_invalid_read(address))
         }
     }
 
-    pub fn get_halfword(&self, address: usize) -> u16 {
+    pub fn get_halfword(&self, address: usize) -> Result<u16, RuntimeError> {
         if let Some(segment) = self.get_segment(address) {
             segment.get_halfword(address)
         } else {
-            self.invalid_read(address);
+            Err(RuntimeError::err_invalid_read(address))
         }
     }
 
-    pub fn get_word(&self, address: usize) -> u32 {
+    pub fn get_word(&self, address: usize) -> Result<u32, RuntimeError> {
         if let Some(segment) = self.get_segment(address) {
             segment.get_word(address)
         } else {
-            self.invalid_read(address);
+            Err(RuntimeError::err_invalid_read(address))
         }
     }
 
-    pub fn set_byte(&mut self, address: usize, value: u8) {
+    pub fn set_byte(&mut self, address: usize, value: u8) -> Result<(), RuntimeError> {
         if let Some(segment) = self.get_segment_mut(address) {
-            segment.set_byte(address, value);
+            segment.set_byte(address, value)
         } else {
-            self.invalid_write(address);
+            Err(RuntimeError::err_invalid_write(address))
         }
     }
 
-    pub fn set_halfword(&mut self, address: usize, value: u16) {
+    pub fn set_halfword(&mut self, address: usize, value: u16) -> Result<(), RuntimeError> {
         if let Some(segment) = self.get_segment_mut(address) {
-            segment.set_halfword(address, value);
+            segment.set_halfword(address, value)
         } else {
-            self.invalid_write(address);
+            Err(RuntimeError::err_invalid_write(address))
         }
     }
 
-    pub fn set_word(&mut self, address: usize, value: u32) {
+    pub fn set_word(&mut self, address: usize, value: u32) -> Result<(), RuntimeError> {
         if let Some(segment) = self.get_segment_mut(address) {
-            segment.set_word(address, value);
+            segment.set_word(address, value)
         } else {
-            self.invalid_write(address);
+            Err(RuntimeError::err_invalid_write(address))
         }
     }
 
